@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
-import requests
 import os
+import requests
 from dotenv import load_dotenv
-import openai
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,27 +14,24 @@ VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
 VECTARA_CORPUS_KEY = os.getenv("VECTARA_CORPUS_KEY")
 VECTARA_URL = f"https://api.vectara.io/v2/corpora/{VECTARA_CORPUS_KEY}/query"
 
-# OpenAI API key for GPT
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Check that the environment variables are loaded correctly
-if not VECTARA_API_KEY or not VECTARA_CORPUS_KEY or not OPENAI_API_KEY:
-    raise ValueError("Please set VECTARA_API_KEY, VECTARA_CORPUS_KEY, and OPENAI_API_KEY in your .env file.")
-
 # API Headers for Vectara
 VECTARA_HEADERS = {
     "Accept": "application/json",
     "x-api-key": VECTARA_API_KEY
 }
 
-# API Headers for OpenAI (ChatGPT)
-openai.api_key = OPENAI_API_KEY
+# Gemini API credentials and endpoint
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+# Check if the environment variable is loaded correctly
+if not GEMINI_API_KEY:
+    raise ValueError("Please set GEMINI_API_KEY in your .env file.")
 
 @app.route("/query-llm", methods=["POST"])
 def query_llm():
     """
-    Handle POST request to receive a query and return the same query as response.
-    The function will query Vectara and then use ChatGPT to process the result.
+    Handle POST request to receive a query and return the Gemini API response.
     """
     data = request.get_json()
 
@@ -44,21 +40,28 @@ def query_llm():
 
     user_query = data['query']
     print("Received query in POST request -> ", user_query)
-
+    
     # Step 1: Get the response from Vectara
     vectara_response = query_vectara_helper(user_query)
+    
+    print("vectara_response : ", vectara_response)
+    
+    # Step 2: Combine Vectara's response with a custom prompt for Gemini
+    gemini_prompt = f"Given the following context, answer the user's query:\nContext: {vectara_response}\nUser Query: {user_query}"
 
-    # # Step 2: Combine Vectara's response with a custom prompt for GPT
-    # gpt_prompt = f"Given the following context, answer the user's query:\nContext: {vectara_response['data']}\nUser Query: {user_query}"
+    # Call Gemini API
+    # Step 3: Gemini API with the combined context and user query
 
-    # # Step 3: Call ChatGPT (gpt-3.5-turbo) with the combined context and user query
-    # gpt_response = query_chatgpt(gpt_prompt)
+    def process_gemini_response(response):
+        try:
+            return response['candidates'][0]['content']['parts'][0]['text']
+        except (KeyError, IndexError, TypeError):
+            return "Invalid Gemini response format."
 
-    # Step 4: Return the result
+    gemini_response_text = process_gemini_response(query_gemini(gemini_prompt))
+
     return jsonify({
-        "query": user_query,
-        "vectara_response": vectara_response,
-        # "chatgpt_response": gpt_response
+        "gemini_response": gemini_response_text
     }), 200
 
 def query_vectara_helper(user_query):
@@ -83,29 +86,52 @@ def query_vectara_helper(user_query):
     except requests.exceptions.RequestException as e:
         return {"error": "Failed to query Vectara", "details": str(e)}
 
-def query_chatgpt(prompt):
+def query_gemini(user_query):
     """
-    Call ChatGPT (gpt-3.5-turbo) model with the given prompt.
+    Call the Gemini API with the given user query.
     """
-    print("Started...")
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    # Context instructions for Gemini
+    chatbot_context = """
+    You are a highly knowledgeable and professional assistant specializing in Brazilian laws, particularly in Real Estate Registry Office procedures. Your primary role is to provide accurate, clear, and concise guidance to clerks and assistants working in registry offices. You are trained in the latest legal procedures, terminology, and best practices related to real estate registrations, ensuring compliance with Brazilian legislation.
+
+    Act as an expert in the field, offering explanations of legal concepts, clarifications on specific registry procedures, and practical advice for handling real estate documentation. You prioritize accuracy, reliability, and professionalism in your responses, tailoring your guidance to the needs of users, whether they are experienced clerks or new assistants.
+
+    When responding, focus on:  
+    1. **Clarity:** Use clear and accessible language while maintaining professional tone.  
+    2. **Relevance:** Provide answers that directly address the user's query, incorporating references to Brazilian laws and registry procedures.  
+    3. **Support:** Offer step-by-step instructions when needed and provide context or examples to enhance understanding.  
+    4. **Consistency:** Align with the goals of process optimization and standardization in registry offices, ensuring uniform guidance.  
+    5. **Adaptability:** Adjust your tone and depth of explanation based on the user’s expertise level (e.g., detailed guidance for new assistants and concise clarifications for experienced clerks).  
+
+    You are also integrated with a powerful Retrieval-Augmented Generation (RAG) system that enables access to a vast database of relevant legal texts and procedures, allowing you to provide up-to-date and accurate responses. In all interactions, maintain a friendly yet professional demeanor to create a supportive user experience.
+    """
+
+
+    payload = {
+            "contents": [{
+                "parts": [
+                    {"text": chatbot_context},  # Add context or behavior instructions
+                    {"text": user_query}  # User query
+                ]
+            }]
+        }
+
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # This is the free model
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=200
-        )
-        return response['choices'][0]['message']['content'].strip()
+        response = requests.post(GEMINI_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()  # Return the full response from Gemini
+    except requests.exceptions.RequestException as e:
+        return {"error": "Failed to query Gemini", "details": str(e)}
 
-    except Exception as e:
-        return {"error": "Failed to query ChatGPT", "details": str(e)}
 
-@app.route("/", methods=["get"])
-def q():
-    print("query_chatgpt -> ", query_chatgpt("What is AI?"))
-    return "Hi..."
+@app.route("/", methods=["GET"])
+def home():
+    return "Gemini API integration is working. Use the '/query-llm' endpoint to query."
+
 
 if __name__ == "__main__":
     app.run(debug=True)
