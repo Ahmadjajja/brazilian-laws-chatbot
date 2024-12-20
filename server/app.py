@@ -109,7 +109,7 @@ def query_gemini(user_query):
     your responses, tailoring your guidance to the needs of users, whether they are experienced clerks or new assistants.
 
     When responding, focus on:
-    1. **Clarity:** Use clear and accessible language while maintaining professional tone.  
+    1. **Clarity:** Use clear and accessible language while maintaining professional tone.
     2. **Relevance:** Provide answers that directly address the user's query, incorporating references to Brazilian laws and registry procedures.  
     3. **Support:** Offer step-by-step instructions when needed and provide context or examples to enhance understanding.  
     4. **Consistency:** Align with the goals of process optimization and standardization in registry offices, ensuring uniform guidance.  
