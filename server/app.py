@@ -17,7 +17,7 @@ VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
 VECTARA_CORPUS_KEY = os.getenv("VECTARA_CORPUS_KEY")
 VECTARA_URL = f"https://api.vectara.io/v2/corpora/{VECTARA_CORPUS_KEY}/query"
 
-# API Headers for Vectara
+# API Headers for Vectara 
 VECTARA_HEADERS = {
     "Accept": "application/json",
     "x-api-key": VECTARA_API_KEY
