@@ -5,7 +5,7 @@ import requests
 st.title("Professional Guidance for Real Estate Registry Offices")
 
 # Define the API URL
-api_url = "http://127.0.0.1:5000/query-llm"
+api_url = "https://brazilian-laws-chatbot.onrender.com/query-llm"
 
 # Prompt input
 prompt = st.text_input("Enter your Text:")
