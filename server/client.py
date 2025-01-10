@@ -4,8 +4,10 @@ import requests
 # Streamlit app title
 st.title("Professional Guidance for Real Estate Registry Offices")
 
+# # Define the API URL
+# api_url = "https://brazilian-laws-chatbot.onrender.com/query-llm"
 # Define the API URL
-api_url = "https://brazilian-laws-chatbot.onrender.com/query-llm" 
+api_url = "http://127.0.0.1:5000/query-llm"
 
 # Prompt input
 prompt = st.text_input("Enter your Text:")
@@ -19,7 +21,7 @@ def get_response_from_api(prompt):
         response = requests.post(api_url, json=payload)
         # Check if the response is successful
         if response.status_code == 200:
-            return response.json().get("gemini_response", "No response from API.")
+            return response.json().get("gpt_response", "No response from API.")
         else:
             return f"Error: {response.status_code} - {response.text}"
     except Exception as e:
