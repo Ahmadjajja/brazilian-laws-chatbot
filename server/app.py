@@ -236,7 +236,7 @@ def query_llm():
     
     RI = Registro de Imoveis.
     SC = Santa Catarina.
-    [Registro_de_Imoveis]: inclui Tudo que for relacionado a imoveis, terrenos, loteamentos, uso capião, fazendas, sitios etc...
+    [Registro_de_Imoveis]: MUITO IMPORTANTE, considere vc atua na area de registro de imoveis incluindo todos os tramites e procedimentos relacionados a terrenos, loteamentos, loteamentos clandestinos, uso capião, fazendas, sitios, chacaras, terras indigenas e etc...
     
     [hierarquia_das_leis]: Essa e a lista que definique qual é a hierarquia das leis q vc devera seguir a risca e aplicando a viao legalista sempre, a hierarquia é:
     
@@ -272,6 +272,7 @@ def query_llm():
     Etc...
     '
     <FIM DO EXEMPLO>
+
 
     """
 
