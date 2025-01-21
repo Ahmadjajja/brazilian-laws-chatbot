@@ -175,6 +175,8 @@ import requests
 from dotenv import load_dotenv
 from flask_cors import CORS
 import openai
+import time
+from functools import wraps
 
 # Load environment variables from .env file
 load_dotenv()
@@ -183,45 +185,155 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Vectara API credentials
-VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
-VECTARA_CORPUS_KEY = os.getenv("VECTARA_CORPUS_KEY")
-VECTARA_URL = f"https://api.vectara.io/v2/corpora/{VECTARA_CORPUS_KEY}/query"
+# Configuration class
+class Config:
+    def __init__(self):
+        self.VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
+        self.VECTARA_CORPUS_KEY = os.getenv("VECTARA_CORPUS_KEY")
+        self.VECTARA_URL = f"https://api.vectara.io/v2/corpora/{self.VECTARA_CORPUS_KEY}/query"
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        self.OPENAI_MODEL = "gpt-4o-mini-2024-07-18"
+        self.VECTARA_HEADERS = {
+            "Accept": "application/json",
+            "x-api-key": self.VECTARA_API_KEY
+        }
+        self.validate()
 
-# API Headers for Vectara
-VECTARA_HEADERS = {
-    "Accept": "application/json",
-    "x-api-key": VECTARA_API_KEY
-}
+    def validate(self):
+        if not all([self.VECTARA_API_KEY, self.VECTARA_CORPUS_KEY, self.OPENAI_API_KEY]):
+            missing = []
+            if not self.VECTARA_API_KEY:
+                missing.append("VECTARA_API_KEY")
+            if not self.VECTARA_CORPUS_KEY:
+                missing.append("VECTARA_CORPUS_KEY")
+            if not self.OPENAI_API_KEY:
+                missing.append("OPENAI_API_KEY")
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
-# OpenAI API Key and Model
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = "gpt-4o-mini-2024-07-18"
+# Initialize config
+config = Config()
+openai.api_key = config.OPENAI_API_KEY
 
-# Check if the environment variable is loaded correctly
-if not OPENAI_API_KEY:
-    raise ValueError("Please set OPENAI_API_KEY in your .env file.")
+# Simple in-memory cache implementation
+class SimpleCache:
+    def __init__(self, ttl=3600):
+        self.cache = {}
+        self.ttl = ttl
 
-openai.api_key = OPENAI_API_KEY
+    def get(self, key):
+        if key in self.cache:
+            value, timestamp = self.cache[key]
+            if time.time() - timestamp < self.ttl:
+                return value
+            else:
+                del self.cache[key]
+        return None
+
+    def set(self, key, value):
+        self.cache[key] = (value, time.time())
+        # Simple cache size management
+        if len(self.cache) > 1000:
+            oldest = min(self.cache.items(), key=lambda x: x[1][1])
+            del self.cache[oldest[0]]
+
+# Initialize cache
+vectara_cache = SimpleCache()
+
+def error_handler(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"Error in {func.__name__}: {str(e)}")  # Basic logging
+            return jsonify({"error": str(e)}), 500
+    return wrapper
+
+def query_vectara_helper(user_query):
+    """
+    Helper function to call the Vectara API with better error handling.
+    """
+    # Check cache first
+    cached_response = vectara_cache.get(user_query)
+    if cached_response:
+        return cached_response
+
+    query_params = {
+        "query": user_query,
+        "limit": 10,
+        "offset": 0
+    }
+
+    try:
+        response = requests.get(
+            config.VECTARA_URL, 
+            headers=config.VECTARA_HEADERS, 
+            params=query_params,
+            timeout=10
+        )
+        response.raise_for_status()
+        result = response.json()
+        vectara_cache.set(user_query, result)
+        return result
+
+    except requests.exceptions.Timeout:
+        return {"error": "Vectara API timeout"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Vectara API error: {str(e)}"}
+
+def get_gpt_response(messages):
+    """
+    Get response from GPT model with error handling.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model=config.OPENAI_MODEL,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"GPT API error: {str(e)}")  # Basic logging
+        return None
 
 @app.route("/query-llm", methods=["POST"])
+@error_handler
 def query_llm():
     """
-    Handle POST request to receive a query and return the GPT-4 API response.
+    Handle POST request with improved error handling and caching.
     """
     data = request.get_json()
-
     if not data or 'query' not in data:
         return jsonify({"error": "Query parameter is required."}), 400
 
     user_query = data['query']
-    print("Received query in POST request -> ", user_query)
+    print(f"Received query: {user_query}")  # Basic logging
 
-    # Step 1: Get the response from Vectara
+    # Get Vectara response
     vectara_response = query_vectara_helper(user_query)
+    if "error" in vectara_response:
+        return jsonify(vectara_response), 500
 
-    # Context instructions for GPT
-    chatbot_context = """
+    # Create chat messages
+    messages = [
+        {"role": "system", "content": CHATBOT_CONTEXT},
+        {"role": "user", "content": f"Given the following context, answer the user's query:\nContext: {vectara_response}\nUser Query: {user_query}"}
+    ]
+
+    # Get GPT response
+    gpt_response = get_gpt_response(messages)
+    if not gpt_response:
+        return jsonify({"error": "Failed to get GPT response"}), 500
+
+    return jsonify({"gpt_response": gpt_response}), 200
+
+@app.route("/", methods=["GET"])
+def home():
+    return "GPT-4 API integration is working. Use the '/query-llm' endpoint to query."
+
+# Move the chatbot context to a constant
+CHATBOT_CONTEXT = """
     Atue com Dante, um profissional senior de cartorio especializado em [Registro_de_Imoveis] e terras indigenas que trabalha exclusivamente em Santa Catarina que apenas responde perguntas sobre RI em SC, seu metodo é sempre seguir plenamente a filosofia legalista, entao vc segue a risca o rigor da lei e o que está escrito, porem quando a pergunta do usuario tiver margem para dupla interpretacao, questoes controversas ou resposta dubia, vc devera verificar na visão doutrinaria sobre o assunto, entao apenas nesses casos vc ira verificar se há alguma questão relevante referente q visão doutrinaria e q deva ser informada ao usuario para q ele possa tomar a decisão mais acertada usando como base as duas visoes. Porem é valido lembrar q vc é por si só um legalista em todas suas respostas, e ira apresentar a visao doutrinária apenas e exclusivamente quando a pergunta do usuario tiver dupla interpretacao relevante, tiver jurisprudencia relevante ou for uma questao realmente controversa; fora isso vc sempre devera responder apenas como LEGALISTA e seguir a risca a hierarquia das leis.
 
     Aqui nesse chat vc APENAS atue como Dante e apenas responde perguntas sobre Registro de Imoveis em Santa Catarina, caso o usuario perguntar sobre duvidas sobre outros assuntos que nao sejam pertinentes a assunstos de registro de imoveis, seja espirituoso na sua resposta, demonste personalidade amigavel e diga quem é vc é o Dante e q aqui nesse chat vc apenas responde duvidas sobre RI em Santa Catarina.
@@ -273,56 +385,6 @@ def query_llm():
     '
     <FIM DO EXEMPLO>
     """
-
-    
-    # Step 2: Combine Vectara's response with a custom prompt for GPT-4
-    combined_prompt = f"Given the following context, answer the user's query:\nContext: {vectara_response}\nUser Query: {user_query}"
-
-    # Step 3: Query GPT-4 API
-    try:
-        gpt_response = openai.ChatCompletion.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": chatbot_context},
-                {"role": "user", "content": combined_prompt}
-            ]
-        )
-        gpt_response_text = gpt_response['choices'][0]['message']['content']
-    except Exception as e:
-        return jsonify({"error": "Failed to query GPT-4", "details": str(e)}), 500
-
-    return jsonify({
-        "gpt_response": gpt_response_text
-    }), 200
-
-
-def query_vectara_helper(user_query):
-    """
-    Helper function to call the Vectara API with a query from POST request.
-    """
-    limit = 10
-    offset = 0
-
-    query_params = {
-        "query": user_query,
-        "limit": limit,
-        "offset": offset
-    }
-
-    try:
-        response = requests.get(VECTARA_URL, headers=VECTARA_HEADERS, params=query_params)
-        response.raise_for_status()
-
-        return response.json()
-
-    except requests.exceptions.RequestException as e:
-        return {"error": "Failed to query Vectara", "details": str(e)}
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return "GPT-4 API integration is working. Use the '/query-llm' endpoint to query."
-
 
 if __name__ == "__main__":
     app.run(debug=True)
