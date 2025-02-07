@@ -71,7 +71,7 @@ if 'messages_for_api' not in st.session_state:
 st.title("Professional Guidance for Real Estate Registry Offices")
 
 # Define the API URL
-api_url = "http://127.0.0.1:5000/query-llm"
+api_url = "https://brazilian-laws-chatbot.onrender.com/query-llm"
 
 # Function to call the REST API and return the response
 def get_response_from_api(prompt, messages_history):
