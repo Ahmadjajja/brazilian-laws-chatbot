@@ -3,7 +3,9 @@ import os
 import requests
 from dotenv import load_dotenv
 from flask_cors import CORS
-import openai
+from openai import OpenAI
+from langsmith.wrappers import wrap_openai
+from langsmith import traceable
 
 # Load environment variables from .env file
 load_dotenv()
@@ -31,7 +33,10 @@ OPENAI_MODEL = "gpt-4o-mini-2024-07-18"
 if not OPENAI_API_KEY:
     raise ValueError("Please set OPENAI_API_KEY in your .env file.")
 
-openai.api_key = OPENAI_API_KEY
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+# Wrap the client with LangSmith
+wrapped_client = wrap_openai(client)
 
 @app.route("/query-llm", methods=["POST"])
 def query_llm():
@@ -46,7 +51,6 @@ def query_llm():
     user_query = data['query']
     conversation_history = data.get('conversation_history', [])
     
-    print("Received query in POST request -> ", user_query)
     # Step 1: Get the response from Vectara
     vectara_response = query_vectara_helper(user_query)
 
@@ -102,7 +106,7 @@ def query_llm():
     Etc...
     '
     <FIM DO EXEMPLO>
-    """
+    """ # ... [rest of the context remains the same]
 
     # Build messages array for GPT
     messages = [
@@ -113,18 +117,17 @@ def query_llm():
     if conversation_history:
         messages.extend(conversation_history.copy())
     
-    print("Messages -> ", messages)
     # Add current query with Vectara context
     current_query = f"Given the following context, answer the user's query:\nContext: {vectara_response}\nUser Query: {user_query}"
     messages.append({"role": "user", "content": current_query})
 
     # Query GPT-4 API with conversation history
     try:
-        gpt_response = openai.ChatCompletion.create(
+        gpt_response = wrapped_client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=messages
         )
-        gpt_response_text = gpt_response['choices'][0]['message']['content']
+        gpt_response_text = gpt_response.choices[0].message.content
     except Exception as e:
         return jsonify({"error": "Failed to query GPT-4", "details": str(e)}), 500
 
