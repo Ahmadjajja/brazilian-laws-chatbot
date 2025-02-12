@@ -1,60 +1,13 @@
-# import streamlit as st
-# import requests
-# 
-# # Streamlit app title
-# st.title("Professional Guidance for Real Estate Registry Offices")
-# 
-# # Initialize session state for chat history if not exists
-# if 'chat_history' not in st.session_state:
-#     st.session_state.chat_history = []
-# 
-# # Define the API URL
-# # api_url = "https://brazilian-laws-chatbot.onrender.com/query-llm"
-# # Uncomment for local testing
-# api_url = "http://127.0.0.1:5000/query-llm"
-# 
-# # Function to call the REST API and return the response
-# def get_response_from_api(prompt, chat_history):
-#     try:
-#         # Prepare payload with prompt and chat history
-#         payload = {
-#             "query": prompt,
-#             "chat_history": chat_history
-#         }
-#         # Make a POST request to the API
-#         response = requests.post(api_url, json=payload)
-#         # Check if the response is successful
-#         if response.status_code == 200:
-#             return response.json().get("gpt_response", "No response from API.")
-#         else:
-#             return f"Error: {response.status_code} - {response.text}"
-#     except Exception as e:
-#         return f"An error occurred: {str(e)}"
-# 
-# # Prompt input
-# prompt = st.text_input("Enter your Text:")
-# 
-# # Button to generate response
-# if st.button("Generate Response"):
-#     with st.spinner('Generating response...'):
-#         # Fetching response from the REST API
-#         response = get_response_from_api(prompt, st.session_state.chat_history)
-#         
-#         # Update chat history
-#         st.session_state.chat_history.append({
-#             "user": prompt,
-#             "assistant": response
-#         })
-# 
-# # Display chat history
-# for chat in reversed(st.session_state.chat_history):
-#     st.write(f"**User:** {chat['user']}")
-#     st.write(f"**Dante:** {chat['assistant']}")
-#     st.markdown("---")
+
 
 import streamlit as st
 import requests
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize session state for chat history and messages for API
 if 'chat_history' not in st.session_state:
@@ -71,7 +24,8 @@ if 'messages_for_api' not in st.session_state:
 st.title("Professional Guidance for Real Estate Registry Offices")
 
 # Define the API URL
-api_url = "http://127.0.0.1:5000/query-llm"
+BackendURl = os.getenv("BACKEND_URL")
+api_url = f"{BackendURl}query-llm"
 
 # Function to call the REST API and return the response
 def get_response_from_api(prompt, messages_history):
