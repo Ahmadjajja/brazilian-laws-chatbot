@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ st.title("Animation demo")
 st.write(
     """
     This app shows how you can use Streamlit to build cool animations.
-    It displays an animated fractal based on the the Julia Set. Use the slider
+    It displays an animated fractal based on the Julia Set. Use the slider
     to tune different parameters.
     """
 )

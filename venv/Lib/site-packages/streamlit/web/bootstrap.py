@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -298,6 +298,8 @@ def run(
     is_hello: bool,
     args: list[str],
     flag_options: dict[str, Any],
+    *,
+    stop_immediately_for_testing: bool = False,
 ) -> None:
     """Run a script in a separate thread and start a server for the app.
 
@@ -321,9 +323,27 @@ def run(
         # and close all our threads
         _set_up_signal_handler(server)
 
+        # return immediately if we're testing the server start
+        if stop_immediately_for_testing:
+            _LOGGER.debug("Stopping server immediately for testing")
+            server.stop()
+
         # Wait until `Server.stop` is called, either by our signal handler, or
         # by a debug websocket session.
         await server.stopped
 
     # Run the server. This function will not return until the server is shut down.
-    asyncio.run(run_server())
+    # FIX RuntimeError: asyncio.run() cannot be called from a running event loop on Python 3.10.16
+    # asyncio.run(run_server())
+
+    # Define a main function to handle the event loop logic
+    async def main():
+        await run_server()
+
+    # Check if we're already in an event loop
+    if asyncio.get_event_loop().is_running():
+        # Use `asyncio.create_task` if we're in an async context
+        asyncio.create_task(main())
+    else:
+        # Otherwise, use `asyncio.run`
+        asyncio.run(main())

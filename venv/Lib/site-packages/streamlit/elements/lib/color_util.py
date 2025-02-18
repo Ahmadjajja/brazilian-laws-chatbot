@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Collection, Tuple, Union, cast
+from collections.abc import Collection
+from typing import Any, Callable, Union, cast
 
 from typing_extensions import TypeAlias
 
@@ -22,17 +23,17 @@ from streamlit.errors import StreamlitInvalidColorError
 
 # components go from 0.0 to 1.0
 # Supported by Pillow and pretty common.
-FloatRGBColorTuple: TypeAlias = Tuple[float, float, float]
-FloatRGBAColorTuple: TypeAlias = Tuple[float, float, float, float]
+FloatRGBColorTuple: TypeAlias = tuple[float, float, float]
+FloatRGBAColorTuple: TypeAlias = tuple[float, float, float, float]
 
 # components go from 0 to 255
 # DeckGL uses these.
-IntRGBColorTuple: TypeAlias = Tuple[int, int, int]
-IntRGBAColorTuple: TypeAlias = Tuple[int, int, int, int]
+IntRGBColorTuple: TypeAlias = tuple[int, int, int]
+IntRGBAColorTuple: TypeAlias = tuple[int, int, int, int]
 
 # components go from 0 to 255, except alpha goes from 0.0 to 1.0
 # CSS uses these.
-MixedRGBAColorTuple: TypeAlias = Tuple[int, int, int, float]
+MixedRGBAColorTuple: TypeAlias = tuple[int, int, int, float]
 
 Color4Tuple: TypeAlias = Union[
     FloatRGBAColorTuple,

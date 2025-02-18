@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING, Any, cast
 
-import streamlit.elements.image as image_utils
 from streamlit.deprecation_util import show_deprecation_warning
+from streamlit.elements.lib.image_utils import WidthBehavior, marshall_images
 from streamlit.proto.Image_pb2 import ImageList as ImageListProto
 from streamlit.runtime.metrics_util import gather_metrics
 
@@ -41,6 +41,9 @@ class PyplotMixin:
     ) -> DeltaGenerator:
         """Display a matplotlib.pyplot figure.
 
+        .. Important::
+            You must install ``matplotlib`` to use this command.
+
         Parameters
         ----------
         fig : Matplotlib Figure
@@ -57,9 +60,9 @@ class PyplotMixin:
             If False, the figure will not be cleared after being rendered.
             If left unspecified, we pick a default based on the value of ``fig``.
 
-            * If ``fig`` is set, defaults to ``False``.
+            - If ``fig`` is set, defaults to ``False``.
 
-            * If ``fig`` is not set, defaults to ``True``. This simulates Jupyter's
+            - If ``fig`` is not set, defaults to ``True``. This simulates Jupyter's
               approach to matplotlib rendering.
 
         use_container_width : bool
@@ -172,11 +175,9 @@ def marshall(
     image = io.BytesIO()
     fig.savefig(image, **kwargs)
     image_width = (
-        image_utils.WidthBehaviour.COLUMN
-        if use_container_width
-        else image_utils.WidthBehaviour.ORIGINAL
+        WidthBehavior.COLUMN if use_container_width else WidthBehavior.ORIGINAL
     )
-    image_utils.marshall_images(
+    marshall_images(
         coordinates=coordinates,
         image=image,
         caption=None,

@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,12 +32,6 @@ _LOGGER: Final = get_logger(__name__)
 class ComponentRequestHandler(tornado.web.RequestHandler):
     def initialize(self, registry: BaseComponentRegistry):
         self._registry = registry
-
-        # This ensures that common mime-types are robust against
-        # system misconfiguration.
-        mimetypes.add_type("text/html", ".html")
-        mimetypes.add_type("application/javascript", ".js")
-        mimetypes.add_type("text/css", ".css")
 
     def get(self, path: str) -> None:
         parts = path.split("/")

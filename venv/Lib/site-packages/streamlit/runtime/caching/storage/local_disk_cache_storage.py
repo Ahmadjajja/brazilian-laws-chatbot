@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -150,7 +150,7 @@ class LocalDiskCacheStorage(CacheStorage):
             except FileNotFoundError:
                 raise CacheStorageKeyNotFoundError("Key not found in disk cache")
             except Exception as ex:
-                _LOGGER.error(ex)
+                _LOGGER.exception("Error reading from cache")
                 raise CacheStorageError("Unable to read from cache") from ex
         else:
             raise CacheStorageKeyNotFoundError(
@@ -164,15 +164,15 @@ class LocalDiskCacheStorage(CacheStorage):
             try:
                 with streamlit_write(path, binary=True) as output:
                     output.write(value)
-            except errors.Error as e:
-                _LOGGER.debug(e)
+            except errors.Error as ex:
+                _LOGGER.debug("Unable to write to cache", exc_info=ex)
                 # Clean up file so we don't leave zero byte files.
                 try:
                     os.remove(path)
                 except (FileNotFoundError, OSError):
                     # If we can't remove the file, it's not a big deal.
                     pass
-                raise CacheStorageError("Unable to write to cache") from e
+                raise CacheStorageError("Unable to write to cache") from ex
 
     def delete(self, key: str) -> None:
         """Delete a cache file from disk. If the file does not exist on disk,

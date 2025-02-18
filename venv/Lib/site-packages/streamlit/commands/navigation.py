@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -228,9 +228,7 @@ def navigation(
     default_page = None
     pagehash_to_pageinfo: dict[PageHash, PageInfo] = {}
 
-    # This nested loop keeps track of two things:
-    # 1. the default page
-    # 2. the pagehash to pageinfo mapping
+    # Get the default page.
     for section_header in nav_sections:
         for page in nav_sections[section_header]:
             if page._default:
@@ -241,6 +239,20 @@ def navigation(
                     )
                 default_page = page
 
+    if default_page is None:
+        default_page = page_list[0]
+        default_page._default = True
+
+    ctx = get_script_run_ctx()
+    if not ctx:
+        # This should never run in Streamlit, but we want to make sure that
+        # the function always returns a page
+        default_page._can_be_called = True
+        return default_page
+
+    # Build the pagehash-to-pageinfo mapping.
+    for section_header in nav_sections:
+        for page in nav_sections[section_header]:
             if isinstance(page._page, Path):
                 script_path = str(page._page)
             else:
@@ -264,10 +276,6 @@ def navigation(
                 "url_pathname": page.url_path,
             }
 
-    if default_page is None:
-        default_page = page_list[0]
-        default_page._default = True
-
     msg = ForwardMsg()
     if position == "hidden":
         msg.navigation.position = NavigationProto.Position.HIDDEN
@@ -287,13 +295,6 @@ def navigation(
             p.is_default = page._default
             p.section_header = section_header
             p.url_pathname = page.url_path
-
-    ctx = get_script_run_ctx()
-    if not ctx:
-        # This should never run in Streamlit, but we want to make sure that
-        # the function always returns a page
-        default_page._can_be_called = True
-        return default_page
 
     # Inform our page manager about the set of pages we have
     ctx.pages_manager.set_pages(pagehash_to_pageinfo)

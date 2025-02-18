@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -145,7 +145,7 @@ class ContextVarWithLazyDefault(Generic[_T]):
         self._context_var: ContextVar[_T] | None = None
 
     def _init_context_var(self) -> None:
-        self._context_var = ContextVar(self._name, default=self._default())
+        self._context_var = ContextVar(self._name, default=self._default())  # noqa: B039
 
     def get(self) -> _T:
         if self._context_var is None:

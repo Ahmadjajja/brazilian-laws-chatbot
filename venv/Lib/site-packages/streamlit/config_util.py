@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ def server_option_changed(
     """Return True if and only if an option in the server section differs
     between old_options and new_options.
     """
-    for opt_name in old_options.keys():
+    for opt_name, opt_val in old_options.items():
         if not opt_name.startswith("server"):
             continue
 
-        old_val = old_options[opt_name].value
+        old_val = opt_val.value
         new_val = new_options[opt_name].value
         if old_val != new_val:
             return True

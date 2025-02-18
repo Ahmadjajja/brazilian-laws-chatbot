@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -273,9 +273,9 @@ class DataCaches(CacheStatsProvider):
         except InvalidCacheStorageContext as e:
             _LOGGER.error(
                 "Cache params for function %s are incompatible with current "
-                "cache storage manager: %s",
+                "cache storage manager.",
                 function_name,
-                e,
+                exc_info=e,
             )
             raise
 
@@ -396,6 +396,13 @@ class CacheDataAPI:
         You can clear a function's cache with ``func.clear()`` or clear the entire
         cache with ``st.cache_data.clear()``.
 
+        A function's arguments must be hashable to cache it. If you have an
+        unhashable argument (like a database connection) or an argument you
+        want to exclude from caching, use an underscore prefix in the argument
+        name. In this case, Streamlit will return a cached value when all other
+        arguments match a previous function call. Alternatively, you can
+        declare custom hashing functions with ``hash_funcs``.
+
         To cache global resources, use ``st.cache_resource`` instead. Learn more
         about caching at https://docs.streamlit.io/develop/concepts/architecture/caching.
 
@@ -407,12 +414,12 @@ class CacheDataAPI:
         ttl : float, timedelta, str, or None
             The maximum time to keep an entry in the cache. Can be one of:
 
-            * ``None`` if cache entries should never expire (default).
-            * A number specifying the time in seconds.
-            * A string specifying the time in a format supported by `Pandas's
+            - ``None`` if cache entries should never expire (default).
+            - A number specifying the time in seconds.
+            - A string specifying the time in a format supported by `Pandas's
               Timedelta constructor <https://pandas.pydata.org/docs/reference/api/pandas.Timedelta.html>`_,
               e.g. ``"1d"``, ``"1.5 days"``, or ``"1h23s"``.
-            * A ``timedelta`` object from `Python's built-in datetime library
+            - A ``timedelta`` object from `Python's built-in datetime library
               <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_,
               e.g. ``timedelta(days=1)``.
 

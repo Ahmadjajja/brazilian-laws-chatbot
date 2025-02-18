@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Mapping
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, Final, Literal, Mapping, Union
+from typing import TYPE_CHECKING, Final, Literal, Union
 
 from typing_extensions import TypeAlias
 
@@ -67,7 +68,7 @@ class ColumnDataKind(str, Enum):
 # The dataframe schema is a mapping from the name of the column
 # in the underlying dataframe to the column data kind.
 # The index column uses `_index` as name.
-DataframeSchema: TypeAlias = Dict[str, ColumnDataKind]
+DataframeSchema: TypeAlias = dict[str, ColumnDataKind]
 
 # This mapping contains all editable column types mapped to the data kinds
 # that the column type is compatible for editing.
@@ -396,7 +397,7 @@ def determine_dataframe_schema(
 
 
 # A mapping of column names/IDs to column configs.
-ColumnConfigMapping: TypeAlias = Dict[Union[IndexIdentifierType, str], ColumnConfig]
+ColumnConfigMapping: TypeAlias = dict[Union[IndexIdentifierType, str], ColumnConfig]
 ColumnConfigMappingInput: TypeAlias = Mapping[
     Union[IndexIdentifierType, str],
     Union[ColumnConfig, None, str],

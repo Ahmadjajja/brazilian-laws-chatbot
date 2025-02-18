@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,12 +20,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
+from streamlit import logger
 from streamlit.connections import BaseConnection
 from streamlit.connections.util import running_in_sis
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.caching import cache_data
+
+_LOGGER: Final = logger.get_logger(__name__)
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -105,14 +108,30 @@ class SnowflakeConnection(BaseConnection["InternalSnowflakeConnection"]):
 
     **Example 2: Configuration with keyword arguments and external authentication**
 
-    You can configure your Snowflake connection with keyword arguments (with or
-    without ``secrets.toml``). For example, if your Snowflake account supports
-    SSO, you can set up a quick local connection for development using `browser-based SSO
+    You can configure your Snowflake connection with keyword arguments. The
+    keyword arguments are merged with (and take precedence over) the values in
+    ``secrets.toml``. However, if you name your connection ``"snowflake"`` and
+    don't have a ``[connections.snowflake]`` dictionary in your
+    ``secrets.toml`` file, Streamlit will ignore any keyword arguments and use
+    the default Snowflake connection as described in Example 5 and Example 6.
+    To configure your connection using only keyword arguments, declare a name
+    for the connection other than ``"snowflake"``.
+
+    For example, if your Snowflake account supports SSO, you can set up a quick
+    local connection for development using `browser-based SSO
     <https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-use#how-browser-based-sso-works>`_.
+    Because there is nothing configured in ``secrets.toml``, the name is an
+    empty string and the type is set to ``"snowflake"``. This prevents
+    Streamlit from ignoring the keyword arguments and using a default
+    Snowflake connection.
 
     >>> import streamlit as st
     >>> conn = st.connection(
-    ...     "snowflake", account="xxx-xxx", user="xxx", authenticator="externalbrowser"
+    ...     "",
+    ...     type="snowflake",
+    ...     account="xxx-xxx",
+    ...     user="xxx",
+    ...     authenticator="externalbrowser",
     ... )
     >>> df = conn.query("SELECT * FROM my_table")
 
@@ -158,6 +177,11 @@ class SnowflakeConnection(BaseConnection["InternalSnowflakeConnection"]):
     >>> df = conn.query("SELECT * FROM my_table")
 
     **Example 5: Default connection with an environment variable**
+
+    If you don't have a ``[connections.snowflake]`` dictionary in your
+    ``secrets.toml`` file and use ``st.connection("snowflake")``, Streamlit
+    will use the default connection for the `Snowflake Python Connector
+    <https://docs.snowflake.cn/en/developer-guide/python-connector/python-connector-connect#setting-a-default-connection>`_.
 
     If you have a Snowflake configuration file with a connection named
     ``my_connection`` as in Example 3, you can set an environment variable to
@@ -224,32 +248,20 @@ class SnowflakeConnection(BaseConnection["InternalSnowflakeConnection"]):
         try:
             st_secrets = self._secrets.to_dict()
             if len(st_secrets):
+                _LOGGER.info(
+                    "Connect to Snowflake using the Streamlit secret defined under "
+                    "[connections.snowflake]."
+                )
                 conn_kwargs = {**st_secrets, **kwargs}
                 return snowflake.connector.connect(**conn_kwargs)
 
-            # session.connector.connection.CONFIG_MANAGER is only available in more recent
-            # versions of snowflake-connector-python.
-            if hasattr(snowflake.connector.connection, "CONFIG_MANAGER"):
-                config_mgr = snowflake.connector.connection.CONFIG_MANAGER
-
-                default_connection_name = "default"
-                try:
-                    default_connection_name = config_mgr["default_connection_name"]
-                except snowflake.connector.errors.ConfigSourceError:
-                    # Similarly, config_mgr["default_connection_name"] only exists in even
-                    # later versions of recent versions. if it doesn't, we just use
-                    # "default" as the default connection name.
-                    pass
-
-                connection_name = (
-                    default_connection_name
-                    if self._connection_name == "snowflake"
-                    else self._connection_name
+            # Use the default configuration as defined in https://docs.snowflake.cn/en/developer-guide/python-connector/python-connector-connect#setting-a-default-connection
+            if self._connection_name == "snowflake":
+                _LOGGER.info(
+                    "Connect to Snowflake using the default configuration as defined "
+                    "in https://docs.snowflake.cn/en/developer-guide/python-connector/python-connector-connect#setting-a-default-connection"
                 )
-                return snowflake.connector.connect(
-                    connection_name=connection_name,
-                    **kwargs,
-                )
+                return snowflake.connector.connect()
 
             return snowflake.connector.connect(**kwargs)
         except SnowflakeError as e:
@@ -321,28 +333,10 @@ class SnowflakeConnection(BaseConnection["InternalSnowflakeConnection"]):
         >>> st.dataframe(df)
 
         """
-        from snowflake.connector.errors import ProgrammingError  # type: ignore[import]
-        from snowflake.connector.network import (  # type: ignore[import]
-            BAD_REQUEST_GS_CODE,
-            ID_TOKEN_EXPIRED_GS_CODE,
-            MASTER_TOKEN_EXPIRED_GS_CODE,
-            MASTER_TOKEN_INVALD_GS_CODE,
-            MASTER_TOKEN_NOTFOUND_GS_CODE,
-            SESSION_EXPIRED_GS_CODE,
-        )
         from tenacity import retry, retry_if_exception, stop_after_attempt, wait_fixed
 
-        retryable_error_codes = {
-            int(code)
-            for code in (
-                ID_TOKEN_EXPIRED_GS_CODE,
-                SESSION_EXPIRED_GS_CODE,
-                MASTER_TOKEN_NOTFOUND_GS_CODE,
-                MASTER_TOKEN_EXPIRED_GS_CODE,
-                MASTER_TOKEN_INVALD_GS_CODE,
-                BAD_REQUEST_GS_CODE,
-            )
-        }
+        # the ANSI-compliant SQL code for "connection was not established" (see docs: https://docs.snowflake.com/en/developer-guide/python-connector/python-connector-api#id6)
+        SQLSTATE_CONNECTION_WAS_NOT_ESTABLISHED = "08001"
 
         @retry(
             after=lambda _: self.reset(),
@@ -352,9 +346,8 @@ class SnowflakeConnection(BaseConnection["InternalSnowflakeConnection"]):
             # `snowflake-connector-python` library already implements retries for
             # retryable HTTP errors.
             retry=retry_if_exception(
-                lambda e: isinstance(e, ProgrammingError)
-                and hasattr(e, "errno")
-                and e.errno in retryable_error_codes
+                lambda e: hasattr(e, "sqlstate")
+                and e.sqlstate == SQLSTATE_CONNECTION_WAS_NOT_ESTABLISHED
             ),
             wait=wait_fixed(1),
         )

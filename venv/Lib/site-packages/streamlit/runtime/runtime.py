@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Awaitable, Final, NamedTuple
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 from streamlit import config
 from streamlit.components.lib.local_component_registry import LocalComponentRegistry
@@ -58,6 +58,8 @@ from streamlit.runtime.stats import StatsManager
 from streamlit.runtime.websocket_session_manager import WebsocketSessionManager
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable
+
     from streamlit.components.types.base_component_registry import BaseComponentRegistry
     from streamlit.proto.BackMsg_pb2 import BackMsg
     from streamlit.runtime.caching.storage import CacheStorageManager
@@ -273,6 +275,17 @@ class Runtime:
             return None
         return session_info.client
 
+    def clear_user_info_for_session(self, session_id: str) -> None:
+        """Clear the user_info for the given session_id.
+
+        Notes
+        -----
+        Threading: SAFE. May be called on any thread.
+        """
+        session_info = self._session_mgr.get_session_info(session_id)
+        if session_info is not None:
+            session_info.session.clear_user_info()
+
     async def start(self) -> None:
         """Start the runtime. This must be called only once, before
         any other functions are called.
@@ -335,7 +348,7 @@ class Runtime:
     def connect_session(
         self,
         client: SessionClient,
-        user_info: dict[str, str | None],
+        user_info: dict[str, str | bool | None],
         existing_session_id: str | None = None,
         session_id_override: str | None = None,
     ) -> str:
@@ -374,9 +387,9 @@ class Runtime:
         -----
         Threading: UNSAFE. Must be called on the eventloop thread.
         """
-        assert not (
-            existing_session_id and session_id_override
-        ), "Only one of existing_session_id and session_id_override should be set!"
+        assert not (existing_session_id and session_id_override), (
+            "Only one of existing_session_id and session_id_override should be set!"
+        )
 
         if self._state in (RuntimeState.STOPPING, RuntimeState.STOPPED):
             raise RuntimeStoppedError(f"Can't connect_session (state={self._state})")
@@ -396,7 +409,7 @@ class Runtime:
     def create_session(
         self,
         client: SessionClient,
-        user_info: dict[str, str | None],
+        user_info: dict[str, str | bool | None],
         existing_session_id: str | None = None,
         session_id_override: str | None = None,
     ) -> str:
@@ -724,9 +737,14 @@ Please report this bug at https://github.com/streamlit/streamlit/issues.
 
         # If this was a `script_finished` message, we increment the
         # script_run_count for this session, and update the cache
-        if (
-            msg.WhichOneof("type") == "script_finished"
-            and msg.script_finished == ForwardMsg.FINISHED_SUCCESSFULLY
+        if msg.WhichOneof("type") == "script_finished" and (
+            msg.script_finished == ForwardMsg.FINISHED_SUCCESSFULLY
+            or (
+                config.get_option(
+                    "global.includeFragmentRunsInForwardMessageCacheCount"
+                )
+                and msg.script_finished == ForwardMsg.FINISHED_FRAGMENT_RUN_SUCCESSFULLY
+            )
         ):
             _LOGGER.debug(
                 "Script run finished successfully; "

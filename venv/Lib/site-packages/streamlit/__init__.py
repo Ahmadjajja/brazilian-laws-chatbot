@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -115,7 +115,11 @@ from streamlit.runtime.state import (
     SessionStateProxy as _SessionStateProxy,
     QueryParamsProxy as _QueryParamsProxy,
 )
-from streamlit.user_info import UserInfoProxy as _UserInfoProxy
+from streamlit.user_info import (
+    UserInfoProxy as _UserInfoProxy,
+    login as _login,
+    logout as _logout,
+)
 from streamlit.commands.experimental_query_params import (
     get_query_params as _get_query_params,
     set_query_params as _set_query_params,
@@ -266,6 +270,11 @@ connection = _connection
 # Fragment and dialog
 dialog = _dialog_decorator
 fragment = _fragment
+
+
+# Auth
+login = _login
+logout = _logout
 
 # Experimental APIs
 experimental_audio_input = _main.experimental_audio_input

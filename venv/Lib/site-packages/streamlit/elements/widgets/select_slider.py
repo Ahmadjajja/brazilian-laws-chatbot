@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,6 @@ from typing import (
     Any,
     Callable,
     Generic,
-    Sequence,
-    Tuple,
     cast,
     overload,
 )
@@ -64,6 +62,8 @@ from streamlit.runtime.state.common import (
 from streamlit.type_util import T, check_python_comparable
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from streamlit.delta_generator import DeltaGenerator
 
 
@@ -91,7 +91,7 @@ class SelectSliderSerde(Generic[T]):
 
         # The widget always returns floats, so convert to ints before indexing
         return_value: tuple[T, T] = cast(
-            Tuple[T, T],
+            tuple[T, T],
             tuple(self.options[int(x)] for x in ui_value),
         )
 
@@ -230,10 +230,14 @@ class SelectSliderMixin:
             If this is omitted, a key will be generated for the widget
             based on its content. No two widgets may have the same key.
 
-        help : str
-            An optional tooltip that gets displayed next to the widget label.
-            Streamlit only displays the tooltip when
-            ``label_visibility="visible"``.
+        help : str or None
+            A tooltip that gets displayed next to the widget label. Streamlit
+            only displays the tooltip when ``label_visibility="visible"``. If
+            this is ``None`` (default), no tooltip is displayed.
+
+            The tooltip can optionally contain GitHub-flavored Markdown,
+            including the Markdown directives described in the ``body``
+            parameter of ``st.markdown``.
 
         on_change : callable
             An optional callback invoked when this select_slider's value changes.
@@ -412,7 +416,7 @@ class SelectSliderMixin:
         )
         if isinstance(widget_state.value, tuple):
             widget_state = maybe_coerce_enum_sequence(
-                cast(RegisterWidgetResult[Tuple[T, T]], widget_state), options, opt
+                cast(RegisterWidgetResult[tuple[T, T]], widget_state), options, opt
             )
         else:
             widget_state = maybe_coerce_enum(widget_state, options, opt)

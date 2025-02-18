@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import inspect
 from abc import abstractmethod
 from copy import deepcopy
@@ -36,6 +35,7 @@ from streamlit.runtime.scriptrunner_utils.exceptions import (
 )
 from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
 from streamlit.time_util import time_to_seconds
+from streamlit.util import calc_md5
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -97,7 +97,7 @@ class MemoryFragmentStorage(FragmentStorage):
     the FragmentStorage protocol.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._fragments: dict[str, Fragment] = {}
 
     # Weirdly, we have to define this above the `set` method, or mypy gets it confused
@@ -167,11 +167,9 @@ def _fragment(
 
         cursors_snapshot = deepcopy(ctx.cursors)
         dg_stack_snapshot = deepcopy(context_dg_stack.get())
-        h = hashlib.new("md5")
-        h.update(
-            f"{non_optional_func.__module__}.{non_optional_func.__qualname__}{dg_stack_snapshot[-1]._get_delta_path_str()}{additional_hash_info}".encode()
+        fragment_id = calc_md5(
+            f"{non_optional_func.__module__}.{non_optional_func.__qualname__}{dg_stack_snapshot[-1]._get_delta_path_str()}{additional_hash_info}"
         )
-        fragment_id = h.hexdigest()
 
         # We intentionally want to capture the active script hash here to ensure
         # that the fragment is associated with the correct script running.
@@ -355,12 +353,12 @@ def fragment(
         The time interval between automatic fragment reruns. This can be one of
         the following:
 
-            * ``None`` (default).
-            * An ``int`` or ``float`` specifying the interval in seconds.
-            * A string specifying the time in a format supported by `Pandas'
+            - ``None`` (default).
+            - An ``int`` or ``float`` specifying the interval in seconds.
+            - A string specifying the time in a format supported by `Pandas'
               Timedelta constructor <https://pandas.pydata.org/docs/reference/api/pandas.Timedelta.html>`_,
               e.g. ``"1d"``, ``"1.5 days"``, or ``"1h23s"``.
-            * A ``timedelta`` object from `Python's built-in datetime library
+            - A ``timedelta`` object from `Python's built-in datetime library
               <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_,
               e.g. ``timedelta(days=1)``.
 

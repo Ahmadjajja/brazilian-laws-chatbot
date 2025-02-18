@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -241,6 +241,9 @@ def _does_file_end_in_semicolon(tree, code: str) -> bool:
     # Avoid spending time with this operation if magic.displayLastExprIfNoSemicolon is
     # not set.
     if config.get_option("magic.displayLastExprIfNoSemicolon"):
+        if len(tree.body) == 0:
+            return False
+
         last_line_num = getattr(tree.body[-1], "end_lineno", None)
 
         if last_line_num is not None:

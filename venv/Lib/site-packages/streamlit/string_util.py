@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -188,17 +188,6 @@ def is_mem_address_str(string):
         return True
 
     return False
-
-
-_RE_CONTAINS_HTML: Final = re.compile(r"(?:</[^<]+>)|(?:<[^<]+/>)")
-
-
-def probably_contains_html_tags(s: str) -> bool:
-    """Returns True if the given string contains what seem to be HTML tags.
-
-    Note that false positives/negatives are possible, so this function should not be
-    used in contexts where complete correctness is required."""
-    return bool(_RE_CONTAINS_HTML.search(s))
 
 
 def to_snake_case(camel_case_str: str) -> str:

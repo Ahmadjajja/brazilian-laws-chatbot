@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,18 +20,24 @@ import dataclasses
 import re
 import types
 from collections import UserList, deque
-from collections.abc import ItemsView, KeysView, ValuesView
+from collections.abc import (
+    AsyncGenerator,
+    Generator,
+    ItemsView,
+    Iterable,
+    KeysView,
+    Mapping,
+    Sequence,
+    ValuesView,
+)
 from enum import EnumMeta
 from typing import (
     TYPE_CHECKING,
     Any,
     Final,
-    Iterable,
     Literal,
     NamedTuple,
     Protocol,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -47,16 +53,21 @@ if TYPE_CHECKING:
     from plotly.graph_objs import Figure
     from pydeck import Deck
 
+    from streamlit.delta_generator import DeltaGenerator
 
 T = TypeVar("T")
 
 # we define our own type here because mypy doesn't seem to support the shape type and
 # reports unreachable code. When mypy supports it, we can remove this custom type.
-NumpyShape: TypeAlias = Tuple[int, ...]
+NumpyShape: TypeAlias = tuple[int, ...]
 
 
 class SupportsStr(Protocol):
     def __str__(self) -> str: ...
+
+
+class SupportsReprHtml(Protocol):
+    def _repr_html_(self) -> str: ...
 
 
 class CustomDict(Protocol):
@@ -159,7 +170,7 @@ def to_bytes(obj: BytesLike) -> bytes:
 _SYMPY_RE: Final = re.compile(r"^sympy.*$")
 
 
-def is_sympy_expession(obj: object) -> TypeGuard[sympy.Expr]:
+def is_sympy_expression(obj: object) -> TypeGuard[sympy.Expr]:
     """True if input is a SymPy expression."""
     if not is_type(obj, _SYMPY_RE):
         return False
@@ -264,6 +275,14 @@ def _is_probably_plotly_dict(obj: object) -> TypeGuard[dict[str, Any]]:
     return False
 
 
+def is_delta_generator(obj: object) -> TypeGuard[DeltaGenerator]:
+    """True if input looks like a DeltaGenerator."""
+
+    # We are using a string here to avoid circular import warnings
+    # when importing DeltaGenerator.
+    return is_type(obj, "streamlit.delta_generator.DeltaGenerator")
+
+
 def is_function(x: object) -> TypeGuard[types.FunctionType]:
     """Return True if x is a function."""
     return isinstance(x, types.FunctionType)
@@ -271,7 +290,13 @@ def is_function(x: object) -> TypeGuard[types.FunctionType]:
 
 def has_callable_attr(obj: object, name: str) -> bool:
     """True if obj has the specified attribute that is callable."""
-    return hasattr(obj, name) and callable(getattr(obj, name))
+    return (
+        hasattr(obj, name)
+        and callable(getattr(obj, name))
+        # DeltaGenerator will return a callable wrapper for any method name,
+        # even if it doesn't exist.
+        and not is_delta_generator(obj)
+    )
 
 
 def is_namedtuple(x: object) -> TypeGuard[NamedTuple]:
@@ -304,24 +329,19 @@ def is_pydantic_model(obj) -> bool:
     return _is_type_instance(obj, "pydantic.main.BaseModel")
 
 
+def _is_from_streamlit(obj: object) -> bool:
+    """True if the object is from the the streamlit package."""
+    return obj.__class__.__module__.startswith("streamlit")
+
+
 def is_custom_dict(obj: object) -> TypeGuard[CustomDict]:
     """True if input looks like one of the Streamlit custom dictionaries."""
-    from streamlit.runtime.context import StreamlitCookies, StreamlitHeaders
-    from streamlit.runtime.secrets import Secrets
-    from streamlit.runtime.state import QueryParamsProxy, SessionStateProxy
-    from streamlit.user_info import UserInfoProxy
 
-    return isinstance(
-        obj,
-        (
-            SessionStateProxy,
-            UserInfoProxy,
-            QueryParamsProxy,
-            StreamlitHeaders,
-            StreamlitCookies,
-            Secrets,
-        ),
-    ) and has_callable_attr(obj, "to_dict")
+    return (
+        isinstance(obj, Mapping)
+        and _is_from_streamlit(obj)
+        and has_callable_attr(obj, "to_dict")
+    )
 
 
 def is_iterable(obj: object) -> TypeGuard[Iterable[Any]]:
@@ -417,3 +437,24 @@ def is_version_less_than(v1: str, v2: str) -> bool:
     from packaging import version
 
     return version.parse(v1) < version.parse(v2)
+
+
+def async_generator_to_sync(
+    async_gen: AsyncGenerator[Any, Any],
+) -> Generator[Any, Any, Any]:
+    """Convert an async generator to a synchronous generator."""
+    import asyncio
+
+    # Create a new event loop.
+    # It is expected that there is no existing event loop in the user thread.
+    loop = asyncio.new_event_loop()
+
+    try:
+        # Iterate over the async generator until it raises StopAsyncIteration
+        while True:
+            yield loop.run_until_complete(async_gen.__anext__())
+    except StopAsyncIteration:
+        # The async generator has finished
+        pass
+    finally:
+        loop.close()

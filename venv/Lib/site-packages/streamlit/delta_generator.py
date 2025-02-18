@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Final,
-    Iterable,
     Literal,
     NoReturn,
     TypeVar,
@@ -130,7 +130,9 @@ def _maybe_print_use_warning() -> None:
 
         if env_util.is_repl():
             logger.get_logger("root").warning(
-                f"\n  {warning} to view a Streamlit app on a browser, use Streamlit in a file and\n  run it with the following command:\n\n    streamlit run [FILE_NAME] [ARGUMENTS]"
+                f"\n  {warning} to view a Streamlit app on a browser, use Streamlit in "
+                "a file and\n  run it with the following command:\n\n    streamlit run "
+                "[FILE_NAME] [ARGUMENTS]"
             )
 
         elif not runtime.exists() and config.get_option(
@@ -139,7 +141,9 @@ def _maybe_print_use_warning() -> None:
             script_name = sys.argv[0]
 
             logger.get_logger("root").warning(
-                f"\n  {warning} to view this Streamlit app on a browser, run it with the following\n  command:\n\n    streamlit run {script_name} [ARGUMENTS]"
+                f"\n  {warning} to view this Streamlit app on a browser, run it with "
+                f"the following\n  command:\n\n    streamlit run {script_name} "
+                "[ARGUMENTS]"
             )
 
 

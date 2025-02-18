@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,13 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
 from copy import deepcopy
 from typing import (
     Any,
     Callable,
     Final,
-    ItemsView,
-    Iterator,
-    KeysView,
-    Mapping,
     NoReturn,
-    ValuesView,
 )
 
 from blinker import Signal

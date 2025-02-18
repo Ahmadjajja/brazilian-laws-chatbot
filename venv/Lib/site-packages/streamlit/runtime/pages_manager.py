@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,8 +57,7 @@ class PagesStrategyV1:
             def _handle_page_changed(_path: str) -> None:
                 source_util.invalidate_pages_cache()
 
-            main_script_path = Path(pages_manager.main_script_path)
-            pages_dir = main_script_path.parent / "pages"
+            pages_dir = pages_manager.main_script_parent / "pages"
             watch_dir(
                 str(pages_dir),
                 _handle_page_changed,
@@ -244,6 +243,10 @@ class PagesManager:
         return self._main_script_path
 
     @property
+    def main_script_parent(self) -> Path:
+        return Path(self._main_script_path).parent
+
+    @property
     def main_script_hash(self) -> PageHash:
         return self._main_script_hash
 
@@ -295,9 +298,11 @@ class PagesManager:
     def set_pages(self, pages: dict[PageHash, PageInfo]) -> None:
         # Manually setting the pages indicates we are using MPA v2.
         if isinstance(self.pages_strategy, PagesStrategyV1):
-            if os.path.exists(Path(self.main_script_path).parent / "pages"):
+            if os.path.exists(self.main_script_parent / "pages"):
                 _LOGGER.warning(
-                    "st.navigation was called in an app with a pages/ directory. This may cause unusual app behavior. You may want to rename the pages/ directory."
+                    "st.navigation was called in an app with a pages/ directory. "
+                    "This may cause unusual app behavior. You may want to rename the "
+                    "pages/ directory."
                 )
             PagesManager.DefaultStrategy = PagesStrategyV2
             self.pages_strategy = PagesStrategyV2(self)

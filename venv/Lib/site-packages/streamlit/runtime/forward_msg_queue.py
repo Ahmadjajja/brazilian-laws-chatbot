@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from streamlit.proto.ForwardMsg_pb2 import ForwardMsg
 
@@ -32,6 +32,16 @@ class ForwardMsgQueue:
     ForwardMsgQueue is not thread-safe - a queue should only be used from
     a single thread.
     """
+
+    _before_enqueue_msg: Callable[[ForwardMsg], None] | None = None
+
+    @staticmethod
+    def on_before_enqueue_msg(
+        before_enqueue_msg: Callable[[ForwardMsg], None] | None,
+    ) -> None:
+        """Set a callback to be called before a message is enqueued.
+        Used in static streamlit app generation."""
+        ForwardMsgQueue._before_enqueue_msg = before_enqueue_msg
 
     def __init__(self):
         self._queue: list[ForwardMsg] = []
@@ -55,6 +65,10 @@ class ForwardMsgQueue:
 
     def enqueue(self, msg: ForwardMsg) -> None:
         """Add message into queue, possibly composing it with another message."""
+
+        if ForwardMsgQueue._before_enqueue_msg:
+            ForwardMsgQueue._before_enqueue_msg(msg)
+
         if not _is_composable_message(msg):
             self._queue.append(msg)
             return
@@ -103,7 +117,7 @@ class ForwardMsgQueue:
             self._queue = []
         else:
             self._queue = [
-                _update_script_finished_message(msg)
+                _update_script_finished_message(msg, fragment_ids_this_run is not None)
                 for msg in self._queue
                 if msg.WhichOneof("type")
                 in {
@@ -195,7 +209,9 @@ def _maybe_compose_deltas(old_delta: Delta, new_delta: Delta) -> Delta | None:
     return None
 
 
-def _update_script_finished_message(msg: ForwardMsg) -> ForwardMsg:
+def _update_script_finished_message(
+    msg: ForwardMsg, is_fragment_run: bool
+) -> ForwardMsg:
     """
     When we are here, the message queue is cleared from non-lifecycle messages
     before they were flushed to the browser.
@@ -207,6 +223,18 @@ def _update_script_finished_message(msg: ForwardMsg) -> ForwardMsg:
     Otherwise, a `FINISHED_SUCCESSFULLY` message might trigger a reset of widget
     states on the frontend.
     """
-    if msg.WhichOneof("type") == "script_finished":
+    if msg.WhichOneof("type") == "script_finished" and (
+        # If this is not a fragment run (= full app run), its okay to change the
+        # script_finished type to FINISHED_EARLY_FOR_RERUN because another full app run
+        # is about to start.
+        # If this is a fragment run, it is allowed to change the state of
+        # all script_finished states except for FINISHED_SUCCESSFULLY, which we use to
+        # indicate that a full app run has finished successfully (in other words, a
+        # fragment should not modify the finished status of a full app run, because
+        # the fragment finished state is different and the frontend might not trigger
+        # cleanups etc. correctly).
+        is_fragment_run is False
+        or msg.script_finished != ForwardMsg.ScriptFinishedStatus.FINISHED_SUCCESSFULLY
+    ):
         msg.script_finished = ForwardMsg.ScriptFinishedStatus.FINISHED_EARLY_FOR_RERUN
     return msg

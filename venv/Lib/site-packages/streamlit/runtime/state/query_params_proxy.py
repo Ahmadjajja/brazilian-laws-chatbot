@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Iterator, MutableMapping, overload
+from collections.abc import Iterable, Iterator, MutableMapping
+from typing import TYPE_CHECKING, overload
 
 from streamlit.runtime.metrics_util import gather_metrics
-from streamlit.runtime.state.query_params import missing_key_error_message
 from streamlit.runtime.state.session_state_proxy import get_session_state
 
 if TYPE_CHECKING:
@@ -45,7 +45,10 @@ class QueryParamsProxy(MutableMapping[str, str]):
     @gather_metrics("query_params.get_item")
     def __getitem__(self, key: str) -> str:
         with get_session_state().query_params() as qp:
-            return qp[key]
+            try:
+                return qp[key]
+            except KeyError:
+                raise KeyError(self.missing_key_error_message(key))
 
     def __delitem__(self, key: str) -> None:
         with get_session_state().query_params() as qp:
@@ -62,14 +65,14 @@ class QueryParamsProxy(MutableMapping[str, str]):
             try:
                 return qp[key]
             except KeyError:
-                raise AttributeError(missing_key_error_message(key))
+                raise AttributeError(self.missing_attr_error_message(key))
 
     def __delattr__(self, key: str) -> None:
         with get_session_state().query_params() as qp:
             try:
                 del qp[key]
             except KeyError:
-                raise AttributeError(missing_key_error_message(key))
+                raise AttributeError(self.missing_key_error_message(key))
 
     @overload
     def update(
@@ -205,3 +208,11 @@ class QueryParamsProxy(MutableMapping[str, str]):
         """
         with get_session_state().query_params() as qp:
             return qp.from_dict(params)
+
+    @staticmethod
+    def missing_key_error_message(key: str) -> str:
+        return f'st.query_params has no key "{key}".'
+
+    @staticmethod
+    def missing_attr_error_message(key: str) -> str:
+        return f'st.query_params has no attribute "{key}".'

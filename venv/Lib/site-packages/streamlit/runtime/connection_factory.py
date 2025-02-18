@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,8 +71,8 @@ def _create_connection(
 
     The weird implementation of this function with the @cache_resource annotated
     function defined internally is done to:
-      * Always @gather_metrics on the call even if the return value is a cached one.
-      * Allow the user to specify ttl and max_entries when calling st.connection.
+      - Always @gather_metrics on the call even if the return value is a cached one.
+      - Allow the user to specify ttl and max_entries when calling st.connection.
     """
 
     def __create_connection(

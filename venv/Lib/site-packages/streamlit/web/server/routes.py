@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,20 @@
 from __future__ import annotations
 
 import os
-from typing import Final, Sequence
+from typing import TYPE_CHECKING, Final
 
 import tornado.web
 
 from streamlit import config, file_util
 from streamlit.logger import get_logger
 from streamlit.runtime.runtime_util import serialize_forward_msg
-from streamlit.web.server.server_util import emit_endpoint_deprecation_notice
+from streamlit.web.server.server_util import (
+    emit_endpoint_deprecation_notice,
+    is_xsrf_enabled,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _LOGGER: Final = get_logger(__name__)
 
@@ -58,7 +64,6 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
         be cached indefinitely.
         """
         is_index_url = len(path) == 0
-
         if is_index_url or path.endswith(".html"):
             self.set_header("Cache-Control", "no-cache")
         else:
@@ -173,7 +178,7 @@ class HealthHandler(_SpecialRequestHandler):
             # server.enableXsrfProtection is updated, the browser does not reload the document.
             # Manually setting the cookie on /healthz since it is pinged when the
             # browser is disconnected from the server.
-            if config.get_option("server.enableXsrfProtection"):
+            if is_xsrf_enabled():
                 cookie_kwargs = self.settings.get("xsrf_cookie_kwargs", {})
                 self.set_cookie(
                     self.settings.get("xsrf_cookie_name", "_streamlit_xsrf"),

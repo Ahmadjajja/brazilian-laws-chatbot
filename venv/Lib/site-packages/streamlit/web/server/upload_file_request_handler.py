@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import tornado.web
 from streamlit import config
 from streamlit.runtime.uploaded_file_manager import UploadedFileRec
 from streamlit.web.server import routes, server_util
+from streamlit.web.server.server_util import is_xsrf_enabled
 
 if TYPE_CHECKING:
     from streamlit.runtime.memory_uploaded_file_manager import MemoryUploadedFileManager
@@ -51,7 +52,7 @@ class UploadFileRequestHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Methods", "PUT, OPTIONS, DELETE")
         self.set_header("Access-Control-Allow-Headers", "Content-Type")
-        if config.get_option("server.enableXsrfProtection"):
+        if is_xsrf_enabled():
             self.set_header(
                 "Access-Control-Allow-Origin",
                 server_util.get_url(config.get_option("browser.serverAddress")),

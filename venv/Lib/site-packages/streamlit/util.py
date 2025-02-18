@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +19,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import hashlib
-import sys
 from typing import Any, Callable
-
-# Due to security issue in md5 and sha1, usedforsecurity
-# argument is added to hashlib for python versions higher than 3.8
-HASHLIB_KWARGS: dict[str, Any] = (
-    {"usedforsecurity": False} if sys.version_info >= (3, 9) else {}
-)
 
 
 def memoize(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -66,8 +59,12 @@ def repr_(self: Any) -> str:
 
 
 def calc_md5(s: bytes | str) -> str:
-    """Return the md5 hash of the given string."""
-    h = hashlib.new("md5", **HASHLIB_KWARGS)
+    """Return the md5 hash of the given string.
+
+    This should not be used for security-related purposes.
+    """
+    # Due to security issue in md5 and sha1, usedforsecurity
+    h = hashlib.new("md5", usedforsecurity=False)
 
     b = s.encode("utf-8") if isinstance(s, str) else s
 

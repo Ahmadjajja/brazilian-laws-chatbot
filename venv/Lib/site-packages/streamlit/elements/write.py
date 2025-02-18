@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,16 +18,20 @@ import dataclasses
 import inspect
 import types
 from collections import ChainMap, UserDict, UserList
-from collections.abc import ItemsView, KeysView, ValuesView
+from collections.abc import (
+    AsyncGenerator,
+    Generator,
+    ItemsView,
+    Iterable,
+    KeysView,
+    ValuesView,
+)
 from io import StringIO
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Final,
-    Generator,
-    Iterable,
-    List,
     cast,
 )
 
@@ -38,7 +42,6 @@ from streamlit.runtime.metrics_util import gather_metrics
 from streamlit.string_util import (
     is_mem_address_str,
     max_char_sequence,
-    probably_contains_html_tags,
 )
 
 if TYPE_CHECKING:
@@ -55,17 +58,21 @@ HELP_TYPES: Final[tuple[type[Any], ...]] = (
 
 _LOGGER: Final = get_logger(__name__)
 
-_TEXT_CURSOR: Final = "▕"
+_TEXT_CURSOR: Final = " ▏"
 
 
-class StreamingOutput(List[Any]):
+class StreamingOutput(list[Any]):
     pass
 
 
 class WriteMixin:
     @gather_metrics("write_stream")
     def write_stream(
-        self, stream: Callable[..., Any] | Generator[Any, Any, Any] | Iterable[Any]
+        self,
+        stream: Callable[..., Any]
+        | Generator[Any, Any, Any]
+        | Iterable[Any]
+        | AsyncGenerator[Any, Any],
     ) -> list[Any] | str:
         """Stream a generator, iterable, or stream-like sequence to the app.
 
@@ -77,6 +84,9 @@ class WriteMixin:
         ----------
         stream : Callable, Generator, Iterable, OpenAI Stream, or LangChain Stream
             The generator or iterable to stream.
+
+            If you pass an async generator, Streamlit will internally convert
+            it to a sync generator.
 
             .. note::
                 To use additional LLM libraries, you can create a wrapper to
@@ -159,7 +169,12 @@ class WriteMixin:
                 streamed_response = ""
 
         # Make sure we have a generator and not just a generator function.
-        stream = stream() if inspect.isgeneratorfunction(stream) else stream
+        if inspect.isgeneratorfunction(stream) or inspect.isasyncgenfunction(stream):
+            stream = stream()
+
+        # If the stream is an async generator, convert it to a sync generator:
+        if inspect.isasyncgen(stream):
+            stream = type_util.async_generator_to_sync(stream)
 
         try:
             iter(stream)  # type: ignore
@@ -239,47 +254,59 @@ class WriteMixin:
 
     @gather_metrics("write")
     def write(self, *args: Any, unsafe_allow_html: bool = False, **kwargs) -> None:
-        """Write arguments to the app.
+        """Displays arguments in the app.
 
         This is the Swiss Army knife of Streamlit commands: it does different
-        things depending on what you throw at it. Unlike other Streamlit commands,
-        write() has some unique properties:
+        things depending on what you throw at it. Unlike other Streamlit
+        commands, ``st.write()`` has some unique properties:
 
-        1. You can pass in multiple arguments, all of which will be written.
-        2. Its behavior depends on the input types as follows.
-        3. It returns None, so its "slot" in the App cannot be reused.
+        - You can pass in multiple arguments, all of which will be displayed.
+        - Its behavior depends on the input type(s).
 
         Parameters
         ----------
         *args : any
-            One or many objects to print to the App.
+            One or many objects to display in the app.
 
-            Arguments are handled as follows:
+            .. list-table:: Each type of argument is handled as follows:
+                :header-rows: 1
 
-            - write(string)         : Prints the formatted Markdown string, with
-                support for LaTeX expression, emoji shortcodes, and colored text.
-                See docs for st.markdown for more.
-            - write(dataframe)      : Displays any dataframe-like object in an interactive table.
-            - write(dict)           : Displays dict-like in an interactive viewer.
-            - write(list)           : Displays list-like in an interactive viewer.
-            - write(error)          : Prints an exception specially.
-            - write(func)           : Displays information about a function.
-            - write(module)         : Displays information about the module.
-            - write(class)          : Displays information about a class.
-            - write(mpl_fig)        : Displays a Matplotlib figure.
-            - write(generator)      : Streams the output of a generator.
-            - write(openai.Stream)  : Streams the output of an OpenAI stream.
-            - write(altair)         : Displays an Altair chart.
-            - write(PIL.Image)      : Displays an image.
-            - write(keras)          : Displays a Keras model.
-            - write(graphviz)       : Displays a Graphviz graph.
-            - write(plotly_fig)     : Displays a Plotly figure.
-            - write(bokeh_fig)      : Displays a Bokeh figure.
-            - write(sympy_expr)     : Prints SymPy expression using LaTeX.
-            - write(htmlable)       : Prints _repr_html_() for the object if available.
-            - write(db_cursor)      : Displays DB API 2.0 cursor results in a table.
-            - write(obj)            : Prints str(obj) if otherwise unknown.
-
+                * - Type
+                  - Handling
+                * - ``str``
+                  - Uses ``st.markdown()``.
+                * - dataframe-like, ``dict``, or ``list``
+                  - Uses ``st.dataframe()``.
+                * - ``Exception``
+                  - Uses ``st.exception()``.
+                * - function, module, or class
+                  - Uses ``st.help()``.
+                * - ``DeltaGenerator``
+                  - Uses ``st.help()``.
+                * - Altair chart
+                  - Uses ``st.altair_chart()``.
+                * - Bokeh figure
+                  - Uses ``st.bokeh_chart()``.
+                * - Graphviz graph
+                  - Uses ``st.graphviz_chart()``.
+                * - Keras model
+                  - Converts model and uses ``st.graphviz_chart()``.
+                * - Matplotlib figure
+                  - Uses ``st.pyplot()``.
+                * - Plotly figure
+                  - Uses ``st.plotly_chart()``.
+                * - ``PIL.Image``
+                  - Uses ``st.image()``.
+                * - generator or stream (like ``openai.Stream``)
+                  - Uses ``st.write_stream()``.
+                * - SymPy expression
+                  - Uses ``st.latex()``.
+                * - An object with ``._repr_html()``
+                  - Uses ``st.html()``.
+                * - Database cursor
+                  - Displays DB API 2.0 cursor results in a table.
+                * - Any
+                  - Displays ``str(arg)`` as inline code.
 
         unsafe_allow_html : bool
             Whether to render HTML within ``*args``. This only applies to
@@ -303,9 +330,12 @@ class WriteMixin:
             Use other, more specific Streamlit commands to pass additional
             keyword arguments.
 
-
-        Example
+        Returns
         -------
+        None
+
+        Examples
+        --------
 
         Its basic use case is to draw Markdown-formatted text, whenever the
         input is a string:
@@ -418,6 +448,9 @@ class WriteMixin:
             elif isinstance(arg, Exception):
                 flush_buffer()
                 self.dg.exception(arg)
+            elif type_util.is_delta_generator(arg):
+                flush_buffer()
+                self.dg.help(arg)
             elif dataframe_util.is_dataframe_like(arg):
                 flush_buffer()
                 self.dg.dataframe(arg)
@@ -436,7 +469,7 @@ class WriteMixin:
             elif type_util.is_graphviz_chart(arg):
                 flush_buffer()
                 self.dg.graphviz_chart(arg)
-            elif type_util.is_sympy_expession(arg):
+            elif type_util.is_sympy_expression(arg):
                 flush_buffer()
                 self.dg.latex(arg)
             elif type_util.is_pillow_image(arg):
@@ -480,6 +513,8 @@ class WriteMixin:
             elif (
                 inspect.isgenerator(arg)
                 or inspect.isgeneratorfunction(arg)
+                or inspect.isasyncgenfunction(arg)
+                or inspect.isasyncgen(arg)
                 or type_util.is_type(arg, "openai.Stream")
             ):
                 flush_buffer()
@@ -495,13 +530,8 @@ class WriteMixin:
                 # We cast arg to type here to appease mypy, due to bug in mypy:
                 # https://github.com/python/mypy/issues/12933
                 self.dg.help(cast(type, arg))
-            elif (
-                type_util.has_callable_attr(arg, "_repr_html_")
-                and (repr_html := arg._repr_html_())
-                and (unsafe_allow_html or not probably_contains_html_tags(repr_html))
-            ):
-                # We either explicitly allow HTML or infer it's not HTML
-                self.dg.markdown(repr_html, unsafe_allow_html=unsafe_allow_html)
+            elif unsafe_allow_html and type_util.has_callable_attr(arg, "_repr_html_"):
+                self.dg.html(arg._repr_html_())
             elif type_util.has_callable_attr(
                 arg, "to_pandas"
             ) or type_util.has_callable_attr(arg, "__dataframe__"):

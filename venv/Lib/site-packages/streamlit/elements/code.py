@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ class CodeMixin:
         *,
         line_numbers: bool = False,
         wrap_lines: bool = False,
+        height: int | None = None,
     ) -> DeltaGenerator:
         """Display a code block with optional syntax highlighting.
 
@@ -59,6 +60,12 @@ class CodeMixin:
         wrap_lines : bool
             An optional boolean indicating whether to wrap lines. This defaults
             to ``False``.
+
+        height : int or None
+            Desired height of the code block expressed in pixels. If ``height``
+            is ``None`` (default), Streamlit sets the element's height to fit
+            its content. Vertical scrolling within the element is enabled when
+            the height does not accomodate all lines.
 
         Examples
         --------
@@ -97,6 +104,8 @@ class CodeMixin:
         code_proto.language = language or "plaintext"
         code_proto.show_line_numbers = line_numbers
         code_proto.wrap_lines = wrap_lines
+        if height:
+            code_proto.height = height
         return self.dg._enqueue("code", code_proto)
 
     @property

@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,16 +38,23 @@ class AlertMixin:
         Parameters
         ----------
         body : str
-            The error text to display.
+            The text to display as GitHub-flavored Markdown. Syntax
+            information can be found at: https://github.github.com/gfm.
+
+            See the ``body`` parameter of |st.markdown|_ for additional,
+            supported Markdown directives.
+
+            .. |st.markdown| replace:: ``st.markdown``
+            .. _st.markdown: https://docs.streamlit.io/develop/api-reference/text/st.markdown
         icon : str, None
             An optional emoji or icon to display next to the alert. If ``icon``
             is ``None`` (default), no icon is displayed. If ``icon`` is a
             string, the following options are valid:
 
-            * A single-character emoji. For example, you can set ``icon="🚨"``
+            - A single-character emoji. For example, you can set ``icon="🚨"``
               or ``icon="🔥"``. Emoji short codes are not supported.
 
-            * An icon from the Material Symbols library (rounded style) in the
+            - An icon from the Material Symbols library (rounded style) in the
               format ``":material/icon_name:"`` where "icon_name" is the name
               of the icon in snake case.
 
@@ -82,16 +89,23 @@ class AlertMixin:
         Parameters
         ----------
         body : str
-            The warning text to display.
+            The text to display as GitHub-flavored Markdown. Syntax
+            information can be found at: https://github.github.com/gfm.
+
+            See the ``body`` parameter of |st.markdown|_ for additional,
+            supported Markdown directives.
+
+            .. |st.markdown| replace:: ``st.markdown``
+            .. _st.markdown: https://docs.streamlit.io/develop/api-reference/text/st.markdown
         icon : str, None
             An optional emoji or icon to display next to the alert. If ``icon``
             is ``None`` (default), no icon is displayed. If ``icon`` is a
             string, the following options are valid:
 
-            * A single-character emoji. For example, you can set ``icon="🚨"``
+            - A single-character emoji. For example, you can set ``icon="🚨"``
               or ``icon="🔥"``. Emoji short codes are not supported.
 
-            * An icon from the Material Symbols library (rounded style) in the
+            - An icon from the Material Symbols library (rounded style) in the
               format ``":material/icon_name:"`` where "icon_name" is the name
               of the icon in snake case.
 
@@ -125,16 +139,23 @@ class AlertMixin:
         Parameters
         ----------
         body : str
-            The info text to display.
+            The text to display as GitHub-flavored Markdown. Syntax
+            information can be found at: https://github.github.com/gfm.
+
+            See the ``body`` parameter of |st.markdown|_ for additional,
+            supported Markdown directives.
+
+            .. |st.markdown| replace:: ``st.markdown``
+            .. _st.markdown: https://docs.streamlit.io/develop/api-reference/text/st.markdown
         icon : str, None
             An optional emoji or icon to display next to the alert. If ``icon``
             is ``None`` (default), no icon is displayed. If ``icon`` is a
             string, the following options are valid:
 
-            * A single-character emoji. For example, you can set ``icon="🚨"``
+            - A single-character emoji. For example, you can set ``icon="🚨"``
               or ``icon="🔥"``. Emoji short codes are not supported.
 
-            * An icon from the Material Symbols library (rounded style) in the
+            - An icon from the Material Symbols library (rounded style) in the
               format ``":material/icon_name:"`` where "icon_name" is the name
               of the icon in snake case.
 
@@ -169,16 +190,23 @@ class AlertMixin:
         Parameters
         ----------
         body : str
-            The success text to display.
+            The text to display as GitHub-flavored Markdown. Syntax
+            information can be found at: https://github.github.com/gfm.
+
+            See the ``body`` parameter of |st.markdown|_ for additional,
+            supported Markdown directives.
+
+            .. |st.markdown| replace:: ``st.markdown``
+            .. _st.markdown: https://docs.streamlit.io/develop/api-reference/text/st.markdown
         icon : str, None
             An optional emoji or icon to display next to the alert. If ``icon``
             is ``None`` (default), no icon is displayed. If ``icon`` is a
             string, the following options are valid:
 
-            * A single-character emoji. For example, you can set ``icon="🚨"``
+            - A single-character emoji. For example, you can set ``icon="🚨"``
               or ``icon="🔥"``. Emoji short codes are not supported.
 
-            * An icon from the Material Symbols library (rounded style) in the
+            - An icon from the Material Symbols library (rounded style) in the
               format ``":material/icon_name:"`` where "icon_name" is the name
               of the icon in snake case.
 

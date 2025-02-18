@@ -1,4 +1,4 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2024)
+# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022-2025)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -84,34 +84,6 @@ class BaseConnection(ABC, Generic[RawConnectionT]):
                     f"`{name}` doesn't exist here, but you can call `._instance.{name}` instead"
                 )
             raise e
-
-    def _repr_html_(self) -> str:
-        """Return a human-friendly markdown string describing this connection.
-
-        This is the string that will be written to the app if a user calls
-        ``st.write(this_connection)``. Subclasses of BaseConnection can freely overwrite
-        this method if desired.
-
-        Returns
-        -------
-        str
-        """
-        module_name = getattr(self, "__module__", None)
-        class_name = type(self).__name__
-
-        cfg = (
-            f"- Configured from `[connections.{self._connection_name}]`"
-            if len(self._secrets)
-            else ""
-        )
-
-        return f"""
----
-**st.connection {self._connection_name} built from `{module_name}.{class_name}`**
-{cfg}
-- Learn more using `st.help()`
----
-"""
 
     # Methods with default implementations that we don't expect subclasses to want or
     # need to overwrite.
