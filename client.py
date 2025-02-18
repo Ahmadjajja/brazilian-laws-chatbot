@@ -27,6 +27,7 @@ st.title("Professional Guidance for Real Estate Registry Offices")
 BackendURl = os.getenv("BACKEND_URL")
 api_url = f"{BackendURl}query-llm"
 
+
 # Function to call the REST API and return the response
 def get_response_from_api(prompt, messages_history):
     try:
