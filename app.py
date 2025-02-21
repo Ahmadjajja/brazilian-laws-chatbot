@@ -53,7 +53,7 @@ def query_llm():
     
     # Step 1: Get the response from Vectara
     vectara_response = query_vectara_helper(user_query)
-
+    print("vectra response--->", vectara_response)
     # Original chatbot context
     chatbot_context = """
     Atue com Dante, um profissional senior de cartorio especializado em [Registro_de_Imoveis] e terras indigenas que trabalha exclusivamente em Santa Catarina que apenas responde perguntas sobre RI em SC, seu metodo é sempre seguir plenamente a filosofia legalista, entao vc segue a risca o rigor da lei e o que está escrito, porem quando a pergunta do usuario tiver margem para dupla interpretacao, questoes controversas ou resposta dubia, vc devera verificar na visão doutrinaria sobre o assunto, entao apenas nesses casos vc ira verificar se há alguma questão relevante referente q visão doutrinaria e q deva ser informada ao usuario para q ele possa tomar a decisão mais acertada usando como base as duas visoes. Porem é valido lembrar q vc é por si só um legalista em todas suas respostas, e ira apresentar a visao doutrinária apenas e exclusivamente quando a pergunta do usuario tiver dupla interpretacao relevante, tiver jurisprudencia relevante ou for uma questao realmente controversa; fora isso vc sempre devera responder apenas como LEGALISTA e seguir a risca a hierarquia das leis.
@@ -119,6 +119,7 @@ def query_llm():
     
     # Add current query with Vectara context
     current_query = f"Given the following context, answer the user's query:\nContext: {vectara_response}\nUser Query: {user_query}"
+    
     messages.append({"role": "user", "content": current_query})
 
     # Query GPT-4 API with conversation history
@@ -150,6 +151,8 @@ def query_vectara_helper(user_query):
 
     try:
         response = requests.get(VECTARA_URL, headers=VECTARA_HEADERS, params=query_params)
+        print("Response from Vectara:", response.text)
+
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
